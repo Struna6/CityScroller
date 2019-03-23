@@ -22,6 +22,7 @@ class ViewController: UIViewController, UIScrollViewDelegate {
     var buildings = [BuildingView]()
     var buildingsLeftCorner = CGFloat()
     var buildingsRightCorner = CGFloat()
+    var lastScrollViewOffset = CGFloat()
     var moon = UIView()
     var setup = true
 
@@ -73,29 +74,50 @@ class ViewController: UIViewController, UIScrollViewDelegate {
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         moon.frame.origin.x = scrollView.contentOffset.x + 10.0
-        print(buildings.count)
+        //print(buildings.count)
 
-        if scrollView.contentOffset.x + self.view.bounds.width >= buildingsRightCorner && !setup{
-            spawnBuildingRight()
-        }
+        //moved right
+        if scrollView.contentOffset.x > lastScrollViewOffset{
+            //spawn on right
+            if scrollView.contentOffset.x + self.view.bounds.width >= floor(buildingsRightCorner) && !setup{
+                spawnBuildingRight()
+            }
+            //remove left scrolling right
+            if let firstBuildingWidth = buildings.first?.frame.width{
+                if scrollView.contentOffset.x >= buildingsLeftCorner + firstBuildingWidth{
+                    buildings.first?.removeFromSuperview()
+                    buildings.removeFirst()
+                    buildings.forEach { (bld) in
+                        bld.center.x -= firstBuildingWidth
+                    }
+                    buildingsLeftCorner = (buildings.first?.frame.minX)!
+                    buildingsRightCorner = (buildings.last?.frame.maxX)!
 
-        if scrollView.contentOffset.x <= buildingsRightCorner && !setup{
-            spawnBuildingLeft()
-        }
-
-        if let firstBuildingWidth = buildings.first?.frame.width{
-            if scrollView.contentOffset.x >= buildingsLeftCorner + firstBuildingWidth{
-                let width = buildings.first?.frame.width
-                buildings.first?.removeFromSuperview()
-                buildings.removeFirst()
-                buildings.forEach { (bld) in
-                    bld.center.x -= width!
+                    scrollView.contentOffset.x = floor(buildingsLeftCorner)
                 }
-                buildingsLeftCorner = (buildings.first?.frame.minX)!
-                buildingsRightCorner = (buildings.last?.frame.maxX)!
-                scrollView.contentOffset.x = buildingsLeftCorner
+            }
+        //moved left
+        }else{
+            //spawn on left
+            if scrollView.contentOffset.x < floor(buildingsLeftCorner) && !setup{
+                spawnBuildingLeft()
+            }
+            //remove right scrolling left
+            if let lastBuildingWidth = buildings.last?.frame.width{
+                if scrollView.contentOffset.x < buildingsRightCorner - lastBuildingWidth - self.view.bounds.width{
+                    buildings.last!.removeFromSuperview()
+                    buildings.removeLast()
+                    buildings.forEach { (bld) in
+                        bld.center.x += lastBuildingWidth
+                    }
+                    buildingsLeftCorner = (buildings.first?.frame.minX)!
+                    buildingsRightCorner = (buildings.last?.frame.maxX)!
+                    scrollView.contentOffset.x = buildingsLeftCorner
+                    print(scrollView.contentOffset.x - buildingsLeftCorner)
+                }
             }
         }
+        lastScrollViewOffset = scrollView.contentOffset.x
     }
 
     func spawnBuildingRight(){
@@ -107,7 +129,19 @@ class ViewController: UIViewController, UIScrollViewDelegate {
     }
 
     func spawnBuildingLeft(){
-        
+        let building = BuildingView.randomBuilding()
+        building.center = CGPoint(x: buildingsLeftCorner - (building.frame.width/2), y: scrollView.bounds.height - (building.frame.height/2) + 50)
+        buildingsLeftCorner = building.frame.minX
+        buildings.insert(building, at: 0)
+        scrollView.addSubview(building)
+    }
+
+    func recenter(){
+        let moveBy = buildings[0].center.x - 400 + (buildings[0].frame.width / 2)
+        buildings.forEach(){
+            $0.center.x -= moveBy
+        }
+        scrollView.contentOffset.x = 400
     }
 }
 
